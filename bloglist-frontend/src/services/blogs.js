@@ -14,17 +14,17 @@ const getAll = async () => {
 
 const put = async (id, updateObject) => {
   const config = {
-    headers : { Authorization: token },
+    headers: { Authorization: token },
   }
   const response = await axios.put(`${baseUrl}/${id}`, updateObject, config)
   return response.data
 }
 
 const deleteBlog = async (id) => {
-  //const config = {
-  //  headers : { Authorization: token },
-  //}
-  const response = await axios.delete(`${baseUrl}/${id}`) //, config
+  const config = {
+    headers: { Authorization: token },
+  }
+  const response = await axios.delete(`${baseUrl}/${id}`, config)
   return response.data
 }
 

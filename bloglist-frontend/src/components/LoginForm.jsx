@@ -10,14 +10,10 @@ const LoginForm = ({ setUser, setMessage, setErrorState }) => {
   const handleLogin = async (event) => {
     event.preventDefault()
     try {
-      const user = {
-        username: "ville",
-        password: "salasana"
-      //const user = await loginServce.login({
-      //  username,
-      //  password
-      //}
-      }
+      const user = await loginServce.login({
+        username,
+        password
+      })
 
       window.localStorage.setItem(
         'loggedBloglistUser', JSON.stringify(user)

@@ -1,62 +1,80 @@
-const jwt = require('jsonwebtoken')
 const blogsRouter = require('express').Router()
-const Blog = require('../models/blog')
-const { userExtractor } = require('../utils/middleware')
+const { Op } = require('sequelize')
+const { User, Blog } = require('../models')
+const { blogFinder, tokenExtractor, userExtractor } = require('../utils/middleware')
 
-blogsRouter.get('/', async (_request, response) => {
-  const blogs = await Blog.findAll()
-    response.json(blogs)
+blogsRouter.get('/', async (req, res) => {
+  const where = {}
+
+  if (req.query.search) {
+    where[Op.or] = [
+      {
+        title: {
+          [Op.substring]: req.query.search
+        },
+      },
+      {
+        author: {
+          [Op.substring]: req.query.search
+        }
+      },
+    ]
+  }
+  const blogs = await Blog.findAll({
+    attributes: { exclude: ['userId'] },
+    include: {
+      model: User,
+      attributes: ['name']
+    },
+    where,
+    order: [['likes', 'DESC']]
+  })
+  res.json(blogs)
 })
 
-blogsRouter.get('/:id', async (request, response) => {
-  const blog = await Blog.findByPk(request.params.id)
-  if (blog) {
-    response.json(blog)
+blogsRouter.get('/:id', blogFinder, async (req, res) => {
+  if (req.blog) {
+    console.log(req.blog)
+    res.json(req.blog)
   } else {
-    response.status(404).end()
+    res.status(404).end()
   }
 })
-//userExtractor
-blogsRouter.post('/', async (request, response) => {
-  const body = await request.body
-  //const decodedToken = jwt.verify(request.token, process.env.SECRET)
-  //if (!decodedToken) {
-  //  return response.status(401).json({ error: 'token invalid' })
-  //}
-  //const user = await request.user
-  const blog = await Blog.create({
-    title: body.title,
-    author: body.author,
-    url: body.url,
-    //user: user.id,
-    //likes: body.likes,
-    //name: user.name,
-  })
-  //const savedBlog = await blog.save()
-  //user.blogs = user.blogs.concat(savedBlog._id)
-  //await user.save()
-  response.status(201).json(blog)
-})
 
-blogsRouter.delete('/:id', async (request, response) => {
-  //const decodedToken = jwt.verify(request.token, process.env.SECRET)
-  const blog = await Blog.findByPk(request.params.id)
-  blog.destroy()
-  response.status(204).end()
-})
-
-blogsRouter.put('/:id', async (request, response) => {
-  const body = request.body
-  const blog = {
-    title: body.title,
-    author: body.author,
-    url: body.url,
-    likes: body.likes,
+blogsRouter.post('/', tokenExtractor, userExtractor, async (req, res) => {
+  const body = req.body
+  const user = req.user
+  if (!body.url || !body.title) {
+    return response.status(400).json({ error: 'url and title required' })
   }
-  const updatedBlog = await Blog.findByIdAndUpdate(request.params.id, blog, {
-    new: true,
-  })
-  response.status(200).json(updatedBlog)
+  if (!body.url || !body.title) {
+    return response.status(400).json({ error: 'url and title required' })
+  }
+  const blog = await Blog.create({ ...body, userId: user.id })
+  res.status(201).json(blog)
+})
+
+blogsRouter.delete('/:id', tokenExtractor, blogFinder, async (req, res) => {
+  if (req.blog.dataValues.userId === req.decodedToken.id) {
+    await req.blog.destroy()
+  }
+  res.status(204).end()
+})
+
+blogsRouter.put('/:id', blogFinder, async (req, res) => {
+  if (!req.blog) {
+    return res.status(404).json({ error: 'Blog not found' })
+  }
+
+  const { title, author, url, likes } = req.body
+
+  if (title) req.blog.title = title
+  if (author) req.blog.author = author
+  if (url) req.blog.url = url
+  if (likes !== null) req.blog.likes = likes
+
+  await req.blog.save()
+  res.status(200).json(req.blog)
 })
 
 module.exports = blogsRouter

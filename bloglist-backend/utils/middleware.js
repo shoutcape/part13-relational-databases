@@ -1,8 +1,9 @@
 const logger = require('./logger')
-const User = require('../models/user')
+const { User, Blog } = require('../models')
 const jwt = require('jsonwebtoken')
+const { SECRET } = require('./config')
 
-const requestLogger = (request, response, next) => {
+const requestLogger = (request, _response, next) => {
   logger.info('Method:', request.method)
   logger.info('Path:', request.path)
   logger.info('Body:', request.body)
@@ -10,48 +11,67 @@ const requestLogger = (request, response, next) => {
   next()
 }
 
-const unknownEndpoint = (request, response) => {
+const unknownEndpoint = (_request, response) => {
   response.status(404).send({ error: 'unknown endpoint' })
 }
 
 const errorHandler = (error, request, response, next) => {
-  logger.error(error.message)
-
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
-  } else if (error.message.includes('is shorter than')) {
-    return response
-      .status(400)
-      .json({ error: 'Username or Password is too short' })
-  } else if (error.name === 'ValidationError') {
-    return response.status(400).json({ error: error.message })
   } else if (
-    error.name === 'JsonWebTokenError' &&
-    error.message === 'no auth'
+    [
+      'SequelizeUniqueConstraintError',
+      'SequelizeEagerLoadingError',
+      'SequelizeDatabaseError',
+      'SequelizeValidationError',
+      'ValidationError',
+      'SyntaxError',
+      'Error',
+      'ReferenceError',
+    ].includes(error.name)
   ) {
-    return response
-      .status(401)
-      .json({ error: 'You do not have permission to delete this blog post.' })
-  } else if (error.name === 'JsonWebTokenError') {
-    return response.status(401).json({ error: 'token missing or invalid' })
-  } else if (error.name === 'TokenExpiredError') {
-    return response.status(401).json({ error: 'token expired' })
+    return response.status(400).json({ error: error.message })
+  } else if (error.name === 'TypeError') {
+    return response.status(500).json({ error: error.message })
   }
-
   next(error)
 }
 
-const tokenExtractor = (request, response, next) => {
-  const authorization = request.get('authorization')
-  if (authorization && authorization.startsWith('Bearer ')) {
-    request.token = authorization.replace('Bearer ', '')
+const tokenExtractor = async (req, res, next) => {
+  const authorization = req.get('authorization')
+
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    req.decodedToken = jwt.verify(authorization.substring(7), SECRET)
+    req.token = authorization.substring(7);
+  } else {
+    return res.status(401).json({ error: 'token missing' })
   }
+
   next()
 }
 
-const userExtractor = async (request, response, next) => {
-  const decodedToken = jwt.verify(request.token, process.env.SECRET)
-  request.user = await User.findById(decodedToken.id)
+const userExtractor = async (req, res, next) => {
+  const decodedToken = jwt.verify(req.token, SECRET)
+  req.user = await User.findOne({
+    where: {
+      username: decodedToken.username
+    }
+  })
+  if (req.user.disabled) {
+    return res.status(401).json({ error: 'user is disabled'})
+  }
+  console.log(req.user)
+  next()
+}
+
+const blogFinder = async (req, _res, next) => {
+  req.blog = await Blog.findByPk(req.params.id)
+  console.log(req.blog)
+  next()
+}
+
+const userFinder = async (req, _res, next) => {
+  req.user = await User.findOne({ where: { username: req.params.username } })
   next()
 }
 
@@ -61,4 +81,6 @@ module.exports = {
   errorHandler,
   tokenExtractor,
   userExtractor,
+  blogFinder,
+  userFinder
 }

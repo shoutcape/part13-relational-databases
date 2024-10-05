@@ -7,7 +7,8 @@
         "start": "cross-env NODE_ENV=production node index.js",
         "dev": "cross-env NODE_ENV=development nodemon index.js",
         "test": "cross-env NODE_ENV=test node --test",
-        "start:test": "cross-env NODE_ENV=test node index.js"
+        "start:test": "cross-env NODE_ENV=test node index.js",
+        "migration:down": "node utils/rollback.js"
     },
     "author": "",
     "license": "ISC",
@@ -20,7 +21,8 @@
         "lodash": "^4.17.21",
         "mongoose": "^8.1.1",
         "pg": "^8.13.0",
-        "sequelize": "^6.37.3"
+        "sequelize": "^6.37.3",
+        "umzug": "^3.8.2"
     },
     "devDependencies": {
         "@eslint/js": "^9.4.0",

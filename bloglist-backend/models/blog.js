@@ -1,6 +1,5 @@
-require('dotenv').config()
-const { Sequelize, Model, DataTypes } = require('sequelize')
-const sequelize = new Sequelize(process.env.DATABASE_URL)
+const { Model, DataTypes } = require('sequelize')
+const { sequelize } = require('../utils/db')
 
 class Blog extends Model { }
 
@@ -25,42 +24,26 @@ Blog.init({
     type: DataTypes.INTEGER,
     defaultValue: 0
   },
+  year: {
+    type: DataTypes.INTEGER,
+    validate: {
+      min: 1991,
+      max: new Date().getFullYear()
+    }
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: { model: 'users', key: 'id' },
+  }
 }, {
   sequelize,
   underscored: true,
-  timestamps: false,
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
   modelName: 'blog'
 })
-
-//const blogSchema = new mongoose.Schema({
-//  url: {
-//    type: String,
-//    required: true,
-//  },
-//  title: {
-//    type: String,
-//    required: true,
-//  },
-//  author: String,
-//  user: {
-//    type: mongoose.Schema.Types.ObjectId,
-//    ref: 'User',
-//  },
-//  likes: { type: Number, default: 0 },
-//  name: String,
-//  comments: {
-//    type: Array,
-//    default: [],
-//  },
-//})
-//
-//blogSchema.set('toJSON', {
-//  transform: (document, returnedObject) => {
-//    returnedObject.id = returnedObject._id.toString()
-//    delete returnedObject._id
-//    delete returnedObject.__v
-//  },
-//})
 
 module.exports = Blog
 

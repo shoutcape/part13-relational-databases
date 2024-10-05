@@ -18,9 +18,8 @@ services:
     volumes:
       - ./bloglist-backend/:/usr/src/app
     environment:
-      - MONGODB_URI=${MONGODB_URI}
       - DATABASE_URL=postgres://postgres:salasana@postgres:5432/postgres
-      - TEST_MONGODB_URI=${TEST_MONGODB_URI}
+      - SECRET=${SECRET}
     container_name: bloglist-backend-dev
     ports:
       - 3000:3000
